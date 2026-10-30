@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ITZIAR</title>
+<style>
+:root{--bg:#fff0f6;--fg:#3b0a2a;--btn:#e6007e;--btn-fg:#fff;--no:#6c5ce7;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c0b16;--fg:#ffe3f1;--btn:#ff3fa4;--btn-fg:#1c0b16;--no:#8f84ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1c0b16;--fg:#ffe3f1;--btn:#ff3fa4;--btn-fg:#1c0b16;--no:#8f84ff;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden}
+button{font:inherit;font-weight:800;font-size:1.4rem;border:0;border-radius:999px;padding:.8em 1.8em;cursor:pointer;color:var(--btn-fg);background:var(--btn);box-shadow:0 6px 18px rgba(0,0,0,.25);transition:transform .15s}
+button:active{transform:scale(.95)}
+#main{font-size:2rem;padding:1em 2em}
+#quiz{display:none}
+#quiz h1{font-size:clamp(1.8rem,7vw,3.2rem);margin:0 0 1.2em}
+.row{display:flex;gap:1.5rem;justify-content:center;align-items:center}
+#no{background:var(--no)}
+#no.fleeing{position:fixed;z-index:5;transition:left .25s ease,top .25s ease,transform .15s}
+#win{display:none;position:fixed;inset:0;align-items:center;justify-content:center;flex-direction:column;z-index:10;
+background:linear-gradient(135deg,#ff0080,#ff8c00,#ffe600,#00e676,#00b0ff,#d500f9);background-size:400% 400%;animation:bg 3s linear infinite}
+#win h1{font-size:clamp(2.2rem,11vw,6rem);color:#fff;margin:0;text-shadow:0 4px 0 #0005;animation:pop .6s ease-in-out infinite alternate}
+@keyframes pop{from{transform:scale(.85) rotate(-6deg)}to{transform:scale(1.15) rotate(6deg)}}
+@keyframes bg{0%{background-position:0 50%}100%{background-position:400% 50%}}
+canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:11}
+</style>
+</head>
+<body>
+<button id="main">ITZIAR</button>
+
+<div id="quiz">
+  <h1>¿Itziar es boba?</h1>
+  <div class="row">
+    <button id="si">Sí</button>
+    <div id="slot"><button id="no">No</button></div>
+  </div>
+</div>
+
+<div id="win"><h1>¡¡CORRECTOOO!!!</h1></div>
+<canvas id="c"></canvas>
+
+<script>
+const $=id=>document.getElementById(id);
+const main=$('main'),quiz=$('quiz'),si=$('si'),no=$('no'),slot=$('slot'),win=$('win');
+
+main.addEventListener('click',()=>{main.style.display='none';quiz.style.display='block'});
+
+function flee(){
+  if(!no.classList.contains('fleeing')){
+    slot.style.width=no.offsetWidth+'px';slot.style.height=no.offsetHeight+'px';
+    no.classList.add('fleeing');
+  }
+  const mw=innerWidth-no.offsetWidth-16,mh=innerHeight-no.offsetHeight-16;
+  const cx=parseFloat(no.style.left)||0,cy=parseFloat(no.style.top)||0;
+  let x,y,t=0;
+  do{x=8+Math.random()*mw;y=8+Math.random()*mh;t++}
+  while(t<20&&Math.hypot(x-cx,y-cy)<150);
+  no.style.left=x+'px';no.style.top=y+'px';
+}
+['pointerenter','pointerdown','touchstart','mousedown','click'].forEach(ev=>
+  no.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();flee()},{passive:false}));
+
+// Detecta el dedo/ratón cuando se acerca
+function near(e){
+  if(quiz.style.display!=='block')return;
+  const r=no.getBoundingClientRect();
+  const d=Math.hypot(e.clientX-(r.left+r.width/2),e.clientY-(r.top+r.height/2));
+  if(d<Math.max(r.width,r.height)*0.9+40)flee();
+}
+document.addEventListener('pointermove',near);
+document.addEventListener('touchmove',e=>near(e.touches[0]),{passive:true});
+
+// Celebración
+const cv=$('c'),ctx=cv.getContext('2d');let parts=[],run=false;
+function size(){cv.width=innerWidth;cv.height=innerHeight}
+addEventListener('resize',size);size();
+function burst(){
+  for(let i=0;i<160;i++)parts.push({x:Math.random()*cv.width,y:-20-Math.random()*cv.height*.5,
+    vx:(Math.random()-.5)*4,vy:2+Math.random()*5,s:6+Math.random()*8,a:Math.random()*6,
+    va:(Math.random()-.5)*.3,c:`hsl(${Math.random()*360},95%,60%)`});
+}
+function loop(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.a+=p.va;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.c;ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);ctx.restore()});
+  parts=parts.filter(p=>p.y<cv.height+30);
+  if(run)requestAnimationFrame(loop);
+}
+si.addEventListener('click',()=>{
+  quiz.style.display='none';no.style.display='none';
+  win.style.display='flex';
+  run=true;burst();loop();
+  setInterval(burst,1500);
+});
+</script>
+</body>
+</html>
